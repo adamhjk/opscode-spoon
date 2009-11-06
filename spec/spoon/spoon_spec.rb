@@ -36,7 +36,7 @@ describe "Spoon" do
     @mock_rest_client = mock('Opscode::REST')
     Opscode::REST.stub!(:new).and_return(@mock_rest_client)
     
-    @cookbook_client = Opscode::Spoon::CookbookClient.new('hostname')
+    @cookbook_client = Chef::CookbookClient.new('hostname')
   end
 
   describe "parsing" do
@@ -47,7 +47,7 @@ describe "Spoon" do
         'cookbook_name' => 'The Name',
         'cookbook_description' => 'The Description',
       }
-      res = Opscode::Spoon::RemoteCookbook.from_json_list(json_hash)
+      res = Chef::RemoteCookbook.from_json_list(json_hash)
       res.uri.should == 'http://cookbook_uri'
       res.maintainer.should == 'the_maintainer'
       res.name.should == 'The Name'
@@ -221,14 +221,14 @@ describe "Spoon" do
   
   describe "RemoteCookbookVersion" do
     it "should handle relative tarball paths" do
-      cookbook_version = Opscode::Spoon::RemoteCookbookVersion.new('http://hostname/api/v1/cookbooks/example/0_7_0')
+      cookbook_version = Chef::RemoteCookbookVersion.new('http://hostname/api/v1/cookbooks/example/0_7_0')
       cookbook_version.set_from_json_hash('hostname', { 'file' => '/server/path_to/example-0.7.0.tar.gz' })
       
       cookbook_version.tarball_uri.should == 'http://hostname/server/path_to/example-0.7.0.tar.gz'
     end
 
     it "should handle absolute tarball paths" do
-      cookbook_version = Opscode::Spoon::RemoteCookbookVersion.new('http://hostname/api/v1/cookbooks/example/0_7_0')
+      cookbook_version = Chef::RemoteCookbookVersion.new('http://hostname/api/v1/cookbooks/example/0_7_0')
       cookbook_version.set_from_json_hash('hostname', { 'file' => 'http://other_server/path_to/example-0.7.0.tar.gz' })
       
       cookbook_version.tarball_uri.should == 'http://other_server/path_to/example-0.7.0.tar.gz'

@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
-$:.push File.join(File.dirname(__FILE__), 'lib')
+$:.push File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
-require 'cookbook_client'
+require 'chef/cookbook_client'
 
 ##########
 # main
@@ -15,6 +15,7 @@ search_term = nil
 cookbook_name = nil
 cookbook_version = nil
 
+replacement_cookbook_name = nil
 upload_cookbook_filename = nil
 upload_cookbook_category = nil
 user_id = nil
@@ -80,6 +81,9 @@ while (idx < ARGV.length) do
   when "-c"
     upload_cookbook_category = get_arg_or_error.call('cookbook category')
     
+  when "-r"
+    replacement_cookbook_name = get_arg_or_error.call('replacement cookbook name')
+    
   when "-h"
     # Undocumented switch for interacting with a different community site.
     hostname = get_arg_or_error.call('community site hostname')
@@ -92,15 +96,21 @@ while (idx < ARGV.length) do
   idx += 1
 end
 
-# Check if we got all the right arguments for upload..
+# Check if we got all the right arguments ..
 if (:upload == command || :delete == command || :deprecate == command) && (user_id.nil? || user_secret_filename.nil?)
   puts "ERROR: Need user id and secret filename for upload, delete or deprecate operation."
   puts
   need_help_text = true
 end
 
-if (:upload == command && upload_cookbook_category.nil?)
+if :upload == command && upload_cookbook_category.nil?
   puts "ERROR: Need category for uploaded cookbook."
+  puts
+  need_help_text = true
+end
+
+if :deprecate == command && replacement_cookbook_name.nil?
+  puts "ERROR: Need replacement cookbook name for deprecate."
   puts
   need_help_text = true
 end
@@ -153,7 +163,7 @@ def print_cookbooks(cookbook_list)
 end
 
 def print_cookbook_details(cookbook)
-  unless cookbook.kind_of?(Opscode::Spoon::RemoteCookbook)
+  unless cookbook.kind_of?(Chef::RemoteCookbook)
     raise "need a RemoteCookbook for print_cookbook_details"
   end
   
@@ -173,7 +183,7 @@ end
 ######
 # Do the action
 ######
-client = Opscode::Spoon::CookbookClient.new(hostname)
+client = Chef::CookbookClient.new(hostname)
 
 case command
 when :list
@@ -214,5 +224,10 @@ when :delete
   puts "Deleting cookbook #{cookbook_name}..."
   res = client.do_delete cookbook_name, user_id, user_secret_filename
   puts "Cookbook deleted."
+  
+when :deprecate
+  puts "Deprecating cookbook #{cookbook_name}..."
+  res = client.do_deprecate cookbook_name, replacement_cookbook_name, user_id, user_secret_filename
+  puts "Cookbook deprecated."
 end
 

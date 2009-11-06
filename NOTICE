@@ -1,0 +1,13 @@
+Spoon NOTICE
+============
+
+Developed at Opscode (http://www.opscode.com).
+
+Contributors and Copyright holders:
+
+ * Copyright 2009, Christopher Walters <cw@opscode.com>
+ * Copyright 2009, Christopher Brown <cb@opscode.com>
+ * Copyright 2009, Tim Hinderliter <tim@opscode.com>
+
+Spoon incorporates code modified from Stanislav Vitvitskiy's blog (http://stanislavvitvitskiy.blogspot.com/2008/12/multipart-post-in-ruby.html).
+
