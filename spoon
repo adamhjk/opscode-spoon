@@ -1,0 +1,218 @@
+#!/usr/bin/env ruby
+
+$:.push File.join(File.dirname(__FILE__), 'lib')
+
+require 'rubygems'
+require 'cookbook_client'
+
+##########
+# main
+##########
+hostname = 'cookbooks.opscode.com'
+need_help_text = nil
+command = nil
+search_term = nil
+cookbook_name = nil
+cookbook_version = nil
+
+upload_cookbook_filename = nil
+upload_cookbook_category = nil
+user_id = nil
+user_secret_filename = nil
+
+# Parse arguments.
+idx = 0
+while (idx < ARGV.length) do
+  get_arg_or_error = lambda { |descr_str|
+    res = nil
+    if ARGV.length > idx + 1
+      res = ARGV[idx + 1]
+      idx += 1
+    else
+      puts "ERROR: missing the #{descr_str}."
+      need_help_text = true
+    end
+    res
+  }
+  
+  # TODO: use case/when
+  # TODO: need to use the getopt (??) parser so i don't have to do all
+  # this checking for extra arguments..
+  case ARGV[idx]
+  when "list"
+    command = :list
+
+  when "search"
+    if search_term = get_arg_or_error.call('search term')
+      command = :search
+    end
+
+  when "show"
+    if cookbook_name = get_arg_or_error.call('cookbook name')
+      command = :show
+    end
+
+  when "download"
+    if cookbook_name = get_arg_or_error.call('cookbook name')
+      command = :download
+    end
+  when "-v"
+    cookbook_version = get_arg_or_error.call('version')
+    
+  when "delete"
+    if cookbook_name = get_arg_or_error.call('cookbook name')
+      command = :delete
+    end
+  when "deprecate"
+    if cookbook_name = get_arg_or_error.call('cookbook name')
+      command = :deprecate
+    end
+
+  # upload and its options..
+  when "upload"
+    if upload_cookbook_filename = get_arg_or_error.call('cookbook filename')
+      command = :upload
+    end
+  when "-u"
+    user_id = get_arg_or_error.call('user id')
+  when "-f"
+    user_secret_filename = get_arg_or_error.call('user secret filename')
+  when "-c"
+    upload_cookbook_category = get_arg_or_error.call('cookbook category')
+    
+  when "-h"
+    # Undocumented switch for interacting with a different community site.
+    hostname = get_arg_or_error.call('community site hostname')
+  
+  else
+    puts "unknown option #{ARGV[idx]}"
+    need_help_text = true
+  end
+  
+  idx += 1
+end
+
+# Check if we got all the right arguments for upload..
+if (:upload == command || :delete == command || :deprecate == command) && (user_id.nil? || user_secret_filename.nil?)
+  puts "ERROR: Need user id and secret filename for upload, delete or deprecate operation."
+  puts
+  need_help_text = true
+end
+
+if (:upload == command && upload_cookbook_category.nil?)
+  puts "ERROR: Need category for uploaded cookbook."
+  puts
+  need_help_text = true
+end
+
+# Spit out the error message if necessary.
+if command.nil? || need_help_text
+  puts <<-EOH
+  Tasks:
+    list
+      Lists all cookbooks available on cookbooks.opscode.com.
+
+    search <term>
+      Searches for cookbooks matching the given term in any cookbook field, as well as the maintainer name.
+
+    show <cookbook_name>
+      Show detailed information, including versions available, for a given cookbook.
+
+    download <cookbook_name> [-v version]
+      Downloads a cookbook with the given name. Defaults to the latest version available
+      unless -v was specified.  
+
+    upload <cookbook_filename> -u <user_name> -f <user_validation_key_filename> [-c cookbook_category] [-t tag1 [tag2]]
+      Uploads a new cookbook with the given filename. You must also include your username
+      and the location of your user validation key. You can generate a new key by logging in 
+      to cookbooks.opscode.com.
+
+    deprecate <cookbook_name> -u <user_id> -f <user_validation_key_filename> -r <recommended_replacement_cookbook_name>
+      Deprecate the given cookbook, and recommend a replacement cookbook. This is useful 
+      if you would like to leave a cookbook up on the site for legacy purposes but want users 
+      to move to a new cookbook. Authentication options are the same as for 'upload'.
+
+    delete <cookbook_name> -u <user_id> -f <user_validation_key_filename>
+      Delete the given cookbook. This will remove all comments, versions, and ratings for 
+      the cookbook. Authentication options are the same as for 'upload'.
+EOH
+  
+  exit 1
+end
+
+def print_cookbooks(cookbook_list)
+  unless cookbook_list.kind_of?(Array)
+    raise "need an array for print_cookbooks"
+  end
+  
+  cookbook_list.each do |cookbook|
+    puts "#{cookbook.name} - #{cookbook.maintainer}"
+    puts "   #{cookbook.description}"
+    puts
+  end
+end
+
+def print_cookbook_details(cookbook)
+  unless cookbook.kind_of?(Opscode::Spoon::RemoteCookbook)
+    raise "need a RemoteCookbook for print_cookbook_details"
+  end
+  
+  puts "Name: #{cookbook.name}"
+  puts "Description: #{cookbook.description}"
+  puts "Maintainer: #{cookbook.maintainer}"
+  puts "Root URI: #{cookbook.uri}"
+  
+  cookbook.versions.each do |ver|
+    is_latest = (ver === cookbook.latest_version) ? "  (latest)" : ""
+    
+    puts "  Version: #{ver.version}   at #{ver.uri}#{is_latest}"
+  end
+end
+
+
+######
+# Do the action
+######
+client = Opscode::Spoon::CookbookClient.new(hostname)
+
+case command
+when :list
+  res = client.do_list
+  print_cookbooks res
+  
+when :search
+  res = client.do_search search_term
+  print_cookbooks res
+
+when :show
+  res = client.do_details cookbook_name
+  print_cookbook_details res
+  puts
+
+when :download
+  puts "Downloading cookbook #{cookbook_name}..."
+  out_filename = client.do_download cookbook_name, cookbook_version
+  puts "#{File.size(out_filename)} bytes written to #{out_filename}."
+  
+when :upload
+  unless File.exists?(upload_cookbook_filename)
+    puts "No such file: #{upload_cookbook_filename}"
+    exit 1
+  end
+  
+  if File.directory?(upload_cookbook_filename)
+    # make a tarball
+    puts "Don't support automagic creation of tarball, yet"
+  else
+    # assume it's a tarball, look for the right contents.
+    puts "Uploading cookbook #{upload_cookbook_filename}..."
+    res = client.do_upload upload_cookbook_filename, upload_cookbook_category, user_id, user_secret_filename
+    puts "Cookbook uploaded."
+  end
+  
+when :delete
+  puts "Deleting cookbook #{cookbook_name}..."
+  res = client.do_delete cookbook_name, user_id, user_secret_filename
+  puts "Cookbook deleted."
+end
+
