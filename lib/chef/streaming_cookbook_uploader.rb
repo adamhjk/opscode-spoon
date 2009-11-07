@@ -4,7 +4,6 @@ require 'mixlib/authentication/signedheaderauth'
 require 'openssl'
 
 # inspired by/cargo-culted from http://stanislavvitvitskiy.blogspot.com/2008/12/multipart-post-in-ruby.html
-# TODO: confirm that code is public domain
 module Chef
   class StreamingCookbookUploader
     DefaultHeaders = { 'accept' => 'application/json' }
