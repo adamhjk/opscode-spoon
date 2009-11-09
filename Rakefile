@@ -7,11 +7,12 @@ begin
     gem.name = "cookbook-client"
     gem.summary = "A command-line tool for interacting with the Cookbook Community Site, cookbooks.opscode.com"
     gem.email = "info@opscode.com"
-    gem.homepage = "http://www.opscode.com"
+    gem.homepage = "http://cookbooks.opscode.com"
     gem.authors = ["Opscode, Inc."]
     gem.bindir = "bin"
     gem.executables = %w(spoon)
     gem.add_dependency 'mixlib-authentication'
+    gem.add_dependency 'opscode-rest'
   end
 rescue LoadError
   puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"

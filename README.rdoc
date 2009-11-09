@@ -1,0 +1,7 @@
+== Cookbook Client, a.k.a. Spoon 
+
+Spoon provides a command-line driven interface to the Opscode Cookbook Community Site, at
+cookbooks.opscode.com. The command-line is driven by Chef::CookbookClient, an implementation
+of the REST client API against the community site.
+
+Run 'spoon' for help with the tool.
